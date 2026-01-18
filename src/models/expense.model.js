@@ -35,7 +35,7 @@ const expenseSchema = new mongoose.Schema(
 
     splitType: {
       type: String,
-      enum: ["EQUAL"],
+      enum: ["EQUAL", "PERCENT"],
       default: "EQUAL",
     },
 
