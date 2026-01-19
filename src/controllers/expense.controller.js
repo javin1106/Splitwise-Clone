@@ -13,21 +13,7 @@ export const createExpense = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Missing required fields");
   }
 
-  const exisitngExpense = await Expense.findOne({
-    groupId,
-    paidBy,
-    totalAmount,
-    participants: {
-      $all: participants,
-      $size: participants.length,
-    },
-  });
-
-  if (exisitngExpense) {
-    throw new ApiError(409, "Expense already exists");
-  }
-
-  const group = await Group.findById(groupId);
+  const group = await Group.findById({ group: groupId });
 
   if (!group) {
     throw new ApiError(404, "Group not found");
@@ -54,9 +40,11 @@ export const createExpense = asyncHandler(async (req, res) => {
 
   let participantsWithShares = [];
   if (splitType === "EQUAL") {
-    const sharePerPerson = totalAmount / uniqueParticipants.length;
+    const sharePerPerson = Number(
+      (totalAmount / uniqueParticipants.length).toFixed(2),
+    );
     participantsWithShares = uniqueParticipants.map((userId) => ({
-      userId,
+      user: userId,
       share: sharePerPerson,
     }));
   }
@@ -70,4 +58,8 @@ export const createExpense = asyncHandler(async (req, res) => {
   });
 
   return res.status(201).json(ApiResponse(201, expense, "Expense created"));
+});
+
+export const getGroupBalances = asyncHandler(async (req, res) => {
+  const { groupId, isActive, participants, paidBy, totalAmount } = req.body;
 });
