@@ -28,6 +28,10 @@ export const createExpense = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Duplicate participants found");
   }
 
+  if (!uniqueParticipants.includes(paidBy)) {
+    throw new ApiError(400, "Payer must be a participant");
+  }
+
   for (let user of uniqueParticipants) {
     if (!group.members.includes(user)) {
       throw new ApiError(400, "Participant not in the group");
@@ -130,4 +134,45 @@ export const getGroupBalances = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, formattedBalances, "Group balances retreived"));
+});
+
+export const getGroupSettlements = asyncHandler(async (req, res) => {
+  const { groupId } = req.params;
+
+  if (!groupId) {
+    throw new ApiError(400, "Group ID is required");
+  }
+
+  const group = await Group.findById(groupId);
+  if (!group) {
+    throw new ApiError(404, "Group not found");
+  }
+
+  const expenses = await Expense.find({
+    group: groupId,
+    isActive: true,
+  });
+
+  const balances = {};
+  group.members.forEach((id) => {
+    balances[id.toString()] = 0;
+  });
+
+  expenses.forEach((expense) => {
+    balances[expense.paidBy.toString()] += expense.totalAmount;
+
+    expense.participants.forEach((p) => {
+      balances[p.user.toString()] -= p.share;
+    });
+  });
+
+  const creditors = [];
+  const debtors = [];
+
+  Object.entries(balances).forEach(([userId, amount]) => {
+    if (amount > 0) creditors.push({ userId, amount });
+    if (amount < 0) debtors.push({ userId, amount });
+  });
+
+  return res.status(200).json(new ApiResponse(200, "Settlements generated"));
 });
