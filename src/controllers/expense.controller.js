@@ -133,7 +133,7 @@ export const getGroupBalances = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, formattedBalances, "Group balances retreived"));
+    .json(new ApiResponse(200, formattedBalances, "Group balances retrieved"));
 });
 
 export const getGroupSettlements = asyncHandler(async (req, res) => {
@@ -171,8 +171,35 @@ export const getGroupSettlements = asyncHandler(async (req, res) => {
 
   Object.entries(balances).forEach(([userId, amount]) => {
     if (amount > 0) creditors.push({ userId, amount });
-    if (amount < 0) debtors.push({ userId, amount });
+    if (amount < 0) debtors.push({ userId, amount: -amount });
   });
 
-  return res.status(200).json(new ApiResponse(200, "Settlements generated"));
+  const settlements = [];
+  let i = 0,
+    j = 0;
+
+  while (i < debtors.length && j < creditors.length) {
+    const debtor = debtors[i];
+    const creditor = creditors[j];
+
+    const settleAmount = Math.min(debtor.amount, creditor.amount);
+
+    settlements.push({
+      from: debtor.userId,
+      to: creditor.userId,
+      amount: Number(settleAmount.toFixed(2)),
+    });
+
+    debtor.amount -= settleAmount;
+    creditor.amount -= settleAmount;
+
+    if (debtor.amount === 0) i++;
+    if (creditor.amount === 0) j++;
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, settlements, "Settlement suggestions generated"),
+    );
 });
